@@ -269,7 +269,6 @@ class Arsenal( GEScenario ):
         elif not GERules.IsIntermission(): # In fact, if we are, we just won!
             GEUtil.EmitGameplayEvent( "ar_completedarsenal", str( player.GetUserID()), "", "", "", True ) #Used for acheivements so we have to send to clients
             GERules.EndRound()
-            
 
     # Set the given player's level kills to the given amount.
     # Some minimal handling of advancing to other levels with killcount increments other than 1, but the gamemode never uses this so if you
@@ -282,8 +281,10 @@ class Arsenal( GEScenario ):
             self.ar_IncrementLevel( player, 1 )
             self.pltracker[player][TR_LEVELKILLS] = 0
         elif (kills < 0):
-            self.ar_IncrementLevel( player, -1 )
-            self.pltracker[player][TR_LEVELKILLS] = max(self.pltracker[player][TR_LEVELKILLS] + kills, 0) # Kills is negative here so we're using it to correct previous level killcount.
+            if self.ar_IncrementLevel( player, -1 ):
+                self.pltracker[player][TR_LEVELKILLS] = max(self.KillsPerLevel + kills, 0) # Kills is negative here so we're using it to correct previous level killcount.
+            else:
+                self.pltracker[player][TR_LEVELKILLS] = 0
         else:
             self.pltracker[player][TR_LEVELKILLS] = kills # No level advancement, just complete the request as asked.
             msg = _( "#GES_GP_GUNGAME_KILLS", str(self.KillsPerLevel - kills) ) # We didn't increment a level which would have caused a level advancement message.
@@ -291,8 +292,11 @@ class Arsenal( GEScenario ):
 
     # Advance the given player's level by the given amount.
     def ar_IncrementLevel( self, player, amt ):
-        if (self.pltracker[player][TR_LEVEL] + amt > 0): # Make sure there's enough levels to take off
+        if (self.pltracker[player][TR_LEVEL] + amt >= 0): # Make sure there's enough levels to take off
             self.ar_SetLevel( player, self.pltracker[player][TR_LEVEL] + amt )
+            return True
+        elif (self.pltracker[player][TR_LEVEL] + amt < 0):
+            return False
         else:
             self.ar_SetKills( player, 0 ) # If we can't take off a level we'll just take all of their kills.
             self.ar_SetLevel( player, 0 ) # and set them to the lowest level, just in case someone changed the design of the mode and expected to take off 2 or more.
